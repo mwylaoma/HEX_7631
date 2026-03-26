@@ -27,7 +27,7 @@ class TlsStreamParser:
         while i < len(data):
             if self.state == self.STATE_CONTENT_TYPE:
                 # TODO: add content type description
-                content_type = data[i]
+                _ = data[i]
                 self.state = self.STATE_VERSION_BYTE0
                 i += 1
                 tls_consumed_bytes += 1
