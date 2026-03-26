@@ -92,13 +92,6 @@ if [ "$host_os" = "mac" ]; then
 fi
 
 case "$EXTRA_FLAGS" in
-*target_os=\"android\"*target_cpu=\"arm64\"*|*target_cpu=\"arm64\"*target_os=\"android\"*)
-  # android-arm64 PGO profile is managed via CIPD in Chromium 146+ and is
-  # not available via the standard pgo_profiles download. Disable PGO.
-  flags="$flags"'
-    default_min_sdk_version=24
-    chrome_pgo_phase=0'
-  ;;
 *target_os=\"android\"*)
   # default_min_sdk_version=24: 26 introduces unnecessary snew symbols
   # is_high_end_android=true: Does not optimize for size, Uses PGO profiles
