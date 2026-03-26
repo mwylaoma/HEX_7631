@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 eval "$EXTRA_FLAGS"
 
 case "$(uname)" in

@@ -34,7 +34,7 @@ case "$host_os" in
     fi
   ;;
   win)
-    if [ -f "$HOME"/.cargo/bin/sccache* ]; then
+    if [ -f "$HOME/.cargo/bin/sccache.exe" ]; then
       export PATH="$PATH:$HOME/.cargo/bin"
       CCACHE=sccache
     fi
