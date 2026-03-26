@@ -78,7 +78,7 @@ case "$target_os" in
   ;;
   android)
     case "$target_cpu" in
-      arm64) ;;  # PGO profile for android-arm64 is managed via CIPD in Chromium 146+
+      arm64) WITH_PGO=android-arm64;;
       *) WITH_PGO=android-arm32;;
     esac
   ;;
