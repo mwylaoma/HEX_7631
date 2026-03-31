@@ -525,9 +525,15 @@ int SocketPosix::DoWrite(IOBuffer* buf, int buf_len) {
   ssize_t send_rv = HANDLE_EINTR(SendAndDetectBogusReturnValue(
       socket_fd_, buf->data(), buf_len, MSG_NOSIGNAL));
   if (send_rv == kSendBogusReturnValueDetected) {
-    // https://crbug.com/40064248 is known to occur as a result of certain
-    // network configuration changes.
-    return ERR_NETWORK_CHANGED;
+    // https://crbug.com/40064248: SocketPosix is used exclusively for
+    // stream sockets (TCP/Unix domain). When the macOS kernel bug is
+    // detected on a stream socket, the data has already been committed to
+    // the kernel send buffer before the IPv6 packet filter hook
+    // (pf_inet6_hook) fires EJUSTRETURN. The TCP connection remains valid
+    // and the kernel will deliver the data (possibly via a VPN tunnel).
+    // Treat the write as fully successful to prevent spurious connection
+    // drops on macOS arm64.
+    return buf_len;
   }
 #else   // WORK_AROUND_CRBUG_40064248
   ssize_t send_rv =
