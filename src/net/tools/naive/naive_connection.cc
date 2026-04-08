@@ -388,7 +388,7 @@ void NaiveConnection::OnBothDisconnected() {
     int error = OK;
     if (errors_[kClient] != ERR_CONNECTION_CLOSED && errors_[kClient] < 0)
       error = errors_[kClient];
-    if (errors_[kServer] != ERR_CONNECTION_CLOSED && errors_[kClient] < 0)
+    if (errors_[kServer] != ERR_CONNECTION_CLOSED && errors_[kServer] < 0)
       error = errors_[kServer];
     std::move(run_callback_).Run(error);
   }
