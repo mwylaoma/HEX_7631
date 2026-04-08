@@ -30,6 +30,11 @@
 #include "base/task/thread_pool/thread_pool_instance.h"
 #include "base/values.h"
 #include "build/build_config.h"
+
+#if BUILDFLAG(IS_POSIX)
+#include <sys/resource.h>
+#endif  // BUILDFLAG(IS_POSIX)
+
 #include "components/version_info/version_info.h"
 #include "net/base/auth.h"
 #include "net/base/network_isolation_key.h"
@@ -368,6 +373,22 @@ int main(int argc, char* argv[]) {
   net::ClientSocketPoolManager::set_max_sockets_per_group(
       net::HttpNetworkSession::NORMAL_SOCKET_POOL,
       kDefaultMaxSocketsPerGroup * kExpectedMaxUsers);
+
+  // Raise the file descriptor soft limit to the hard limit so that the proxy
+  // can handle many simultaneous connections. On macOS the default soft limit
+  // is typically 2048, which is too low for sustained high-traffic use and
+  // causes new connections to be rejected once the limit is reached.
+#if BUILDFLAG(IS_POSIX)
+  {
+    struct rlimit rl;
+    if (getrlimit(RLIMIT_NOFILE, &rl) == 0 && rl.rlim_cur < rl.rlim_max) {
+      rl.rlim_cur = rl.rlim_max;
+      if (setrlimit(RLIMIT_NOFILE, &rl) != 0) {
+        PLOG(WARNING) << "Failed to raise RLIMIT_NOFILE to " << rl.rlim_max;
+      }
+    }
+  }
+#endif  // BUILDFLAG(IS_POSIX)
 
   const auto& proc = *base::CommandLine::ForCurrentProcess();
   const auto& args = proc.GetArgs();
