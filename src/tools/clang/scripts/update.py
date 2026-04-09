@@ -297,7 +297,8 @@ def UpdatePackage(package_name,
     ]:
       try:
         env = {}
-        exec(open(gclient_config).read(), env, env)
+        with open(gclient_config, 'r', encoding='utf-8') as f:
+          exec(f.read(), env, env)
         target_os = env.get('target_os', target_os)
         break
       except Exception:
