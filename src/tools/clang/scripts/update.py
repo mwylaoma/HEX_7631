@@ -18,6 +18,7 @@ import sys
 assert sys.version_info >= (3, 0), 'This script requires Python 3.'
 
 import argparse
+import ast
 import glob
 import os
 import platform
@@ -96,6 +97,24 @@ def ReadStampFile(path):
       return f.read().rstrip()
   except IOError:
     return ''
+
+
+def ReadGclientTargetOs(path):
+  """Return target_os from a .gclient file when it is a literal value."""
+  with open(path, 'r', encoding='utf-8') as f:
+    module = ast.parse(f.read(), filename=path)
+
+  for node in module.body:
+    if not isinstance(node, ast.Assign):
+      continue
+    for target in node.targets:
+      if isinstance(target, ast.Name) and target.id == 'target_os':
+        value = ast.literal_eval(node.value)
+        if isinstance(value, list) and all(isinstance(item, str) for item in value):
+          return value
+        return []
+
+  return []
 
 
 def WriteStampFile(s, path, preserve_hash_files=False):
@@ -288,7 +307,7 @@ def UpdatePackage(package_name,
   # TODO(hans): Create a clang-win-runtime package and use separate DEPS hook.
   target_os = []
   if package_name == 'clang':
-    # Probe for .gclient in the src dir or its parent (crbug.com/462493895).
+    # Probe for .gclient in the src dir or its parent.
     # Some projects (ANGLE) keep it in the src dir, others (Chromium) in its
     # parent.
     for gclient_config in [
@@ -296,10 +315,7 @@ def UpdatePackage(package_name,
         os.path.join(CHROMIUM_DIR, '..', '.gclient')
     ]:
       try:
-        env = {}
-        with open(gclient_config, 'r', encoding='utf-8') as f:
-          exec(f.read(), env, env)
-        target_os = env.get('target_os', target_os)
+        target_os = ReadGclientTargetOs(gclient_config)
         break
       except Exception:
         pass
