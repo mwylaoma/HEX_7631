@@ -98,7 +98,9 @@
 
 namespace {
 
-constexpr int kListenBackLog = 512;
+// Let the platform clamp this to its maximum supported listen queue length.
+// A fixed queue of 512 starts dropping or delaying accepts under heavier load.
+constexpr int kListenBackLog = std::numeric_limits<int>::max();
 constexpr int kDefaultMaxSocketsPerPool = 256;
 constexpr int kDefaultMaxSocketsPerGroup = 255;
 constexpr int kExpectedMaxUsers = 8;
