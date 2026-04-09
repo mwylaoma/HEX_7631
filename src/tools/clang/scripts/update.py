@@ -18,6 +18,7 @@ import sys
 assert sys.version_info >= (3, 0), 'This script requires Python 3.'
 
 import argparse
+import ast
 import glob
 import os
 import platform
@@ -39,11 +40,11 @@ import zlib
 # These fields are written by //tools/clang/scripts/upload_revision.py, and
 # should not be changed manually.
 # They are also read by build/config/compiler/BUILD.gn.
-CLANG_REVISION = 'llvmorg-22-init-8940-g4d4cb757'
-CLANG_SUB_REVISION = 84
+CLANG_REVISION = 'llvmorg-23-init-5669-g8a0be0bc'
+CLANG_SUB_REVISION = 1
 
 PACKAGE_VERSION = '%s-%s' % (CLANG_REVISION, CLANG_SUB_REVISION)
-RELEASE_VERSION = '22'
+RELEASE_VERSION = '23'
 
 CDS_URL = os.environ.get('CDS_CLANG_BUCKET_OVERRIDE',
     'https://commondatastorage.googleapis.com/chromium-browser-clang')
@@ -96,6 +97,24 @@ def ReadStampFile(path):
       return f.read().rstrip()
   except IOError:
     return ''
+
+
+def ReadGclientTargetOs(path):
+  """Return target_os from a .gclient file when it is a literal value."""
+  with open(path, 'r', encoding='utf-8') as f:
+    module = ast.parse(f.read(), filename=path)
+
+  for node in module.body:
+    if not isinstance(node, ast.Assign):
+      continue
+    for target in node.targets:
+      if isinstance(target, ast.Name) and target.id == 'target_os':
+        value = ast.literal_eval(node.value)
+        if isinstance(value, list) and all(isinstance(item, str) for item in value):
+          return value
+        return []
+
+  return []
 
 
 def WriteStampFile(s, path, preserve_hash_files=False):
@@ -288,13 +307,18 @@ def UpdatePackage(package_name,
   # TODO(hans): Create a clang-win-runtime package and use separate DEPS hook.
   target_os = []
   if package_name == 'clang':
-    try:
-      GCLIENT_CONFIG = os.path.join(os.path.dirname(CHROMIUM_DIR), '.gclient')
-      env = {}
-      exec (open(GCLIENT_CONFIG).read(), env, env)
-      target_os = env.get('target_os', target_os)
-    except:
-      pass
+    # Probe for .gclient in the src dir or its parent.
+    # Some projects (ANGLE) keep it in the src dir, others (Chromium) in its
+    # parent.
+    for gclient_config in [
+        os.path.join(CHROMIUM_DIR, '.gclient'),
+        os.path.join(CHROMIUM_DIR, '..', '.gclient')
+    ]:
+      try:
+        target_os = ReadGclientTargetOs(gclient_config)
+        break
+      except Exception:
+        pass
 
   if os.path.exists(OLD_STAMP_FILE):
     # Delete the old stamp file so it doesn't look like an old version of clang
