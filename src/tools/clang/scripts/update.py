@@ -300,7 +300,7 @@ def UpdatePackage(package_name,
         exec(open(gclient_config).read(), env, env)
         target_os = env.get('target_os', target_os)
         break
-      except:
+      except Exception:
         pass
 
   if os.path.exists(OLD_STAMP_FILE):
