@@ -5,7 +5,6 @@
 
 #include <cstdlib>
 #include <iostream>
-#include <limits>
 #include <memory>
 #include <optional>
 #include <string>
@@ -30,6 +29,12 @@
 #include "base/task/thread_pool/thread_pool_instance.h"
 #include "base/values.h"
 #include "build/build_config.h"
+
+#if BUILDFLAG(IS_WIN)
+#include <winsock2.h>
+#else
+#include <sys/socket.h>
+#endif
 
 #if BUILDFLAG(IS_POSIX)
 #include <sys/resource.h>
@@ -98,7 +103,9 @@
 
 namespace {
 
-constexpr int kListenBackLog = 512;
+// Use the platform backlog maximum instead of a small fixed queue.
+// A fixed queue of 512 starts dropping or delaying accepts under heavier load.
+constexpr int kListenBackLog = SOMAXCONN;
 constexpr int kDefaultMaxSocketsPerPool = 256;
 constexpr int kDefaultMaxSocketsPerGroup = 255;
 constexpr int kExpectedMaxUsers = 8;
