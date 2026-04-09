@@ -10,7 +10,7 @@ defaults:
     shell: bash
     working-directory: src
 env:
-  CACHE_EPOCH: 1
+  CACHE_EPOCH: 2
   CCACHE_MAXSIZE: 200M
   CCACHE_MAXFILES: 0
   SCCACHE_CACHE_SIZE: 200M
