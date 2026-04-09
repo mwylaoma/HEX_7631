@@ -96,6 +96,7 @@ case "$EXTRA_FLAGS" in
   # default_min_sdk_version=24: 26 introduces unnecessary snew symbols
   # is_high_end_android=true: Does not optimize for size, Uses PGO profiles
   flags="$flags"'
+    is_desktop_android=true
     default_min_sdk_version=24
     is_high_end_android=true'
   ;;

@@ -78,7 +78,9 @@ case "$target_os" in
   ;;
   android)
     case "$target_cpu" in
-      arm64) WITH_PGO=android-arm64;;
+      arm64) WITH_PGO=android-desktop-arm64;;
+      x64) WITH_PGO=android-desktop-x64;;
+      arm) WITH_PGO=android-arm32;;
       *) WITH_PGO=android-arm32;;
     esac
   ;;
