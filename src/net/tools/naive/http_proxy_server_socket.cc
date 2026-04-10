@@ -38,7 +38,7 @@ namespace {
 constexpr int kBufferSize = 64 * 1024;
 constexpr size_t kMaxHeaderSize = 64 * 1024;
 constexpr size_t kBufferCompactionThresholdDivisor = 2;
-constexpr size_t kRequestLineExtraChars = 4;
+constexpr size_t kRequestLineDelimiterBytes = 4;
 constexpr char kResponseHeader[] = "HTTP/1.1 200 OK\r\nPadding: ";
 constexpr int kResponseHeaderSize = sizeof(kResponseHeader) - 1;
 // A plain 200 is 10 bytes. Expected 48 bytes. "Padding" uses up 7 bytes.
@@ -436,7 +436,7 @@ int HttpProxyServerSocket::DoHeaderReadComplete(int result) {
     std::string sanitized_request;
     sanitized_request.reserve(method.size() + uri_string->size() +
                               version.size() +
-                              kRequestLineExtraChars +
+                              kRequestLineDelimiterBytes +
                               sanitized_headers_str.size() + payload_size);
     sanitized_request.append(method);
     sanitized_request.push_back(' ');
