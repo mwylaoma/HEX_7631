@@ -86,6 +86,10 @@ case "$target_os" in
   ;;
 esac
 if [ "$WITH_PGO" ]; then
+  if [ -z "$WITH_PGO" ]; then
+    echo "Missing PGO target selection" >&2
+    exit 1
+  fi
   PGO_LIST="chrome/build/$WITH_PGO.pgo.txt"
   if [ ! -r "$PGO_LIST" ]; then
     echo "Missing PGO profile selector $PGO_LIST" >&2
@@ -98,13 +102,13 @@ if [ "$WITH_PGO" ]; then
     LLVM_PROFDATA="$LLVM_PROFDATA.exe"
   fi
   if [ -f "$PGO_FILE" ] && [ -x "$LLVM_PROFDATA" ]; then
-    profdata_status=0
-    profdata_stderr=$("$LLVM_PROFDATA" show "$PGO_FILE" 2>&1 >/dev/null) ||
-      profdata_status=$?
-    if [ "$profdata_status" -ne 0 ]; then
+    profdata_stderr_file=$(mktemp)
+    if ! "$LLVM_PROFDATA" show "$PGO_FILE" >/dev/null 2>"$profdata_stderr_file"; then
+      profdata_stderr=$(cat "$profdata_stderr_file")
       echo "Removing unreadable PGO profile $PGO_FILE: ${profdata_stderr:-validation failed}" >&2
       rm -f "$PGO_FILE"
     fi
+    rm -f "$profdata_stderr_file"
   fi
   if [ ! -f "$PGO_FILE" ]; then
     mkdir -p chrome/build/pgo_profiles
