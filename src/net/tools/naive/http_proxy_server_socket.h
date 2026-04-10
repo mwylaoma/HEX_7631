@@ -97,6 +97,7 @@ class HttpProxyServerSocket : public StreamSocket {
 
   std::optional<PaddingType> ParsePaddingHeaders(
       const HttpRequestHeaders& headers);
+  void ConsumeBufferedBytes(size_t count);
 
   CompletionRepeatingCallback io_callback_;
 
@@ -115,6 +116,7 @@ class HttpProxyServerSocket : public StreamSocket {
   scoped_refptr<IOBuffer> handshake_buf_;
 
   std::string buffer_;
+  size_t buffer_offset_ = 0;
   bool completed_handshake_;
   bool was_ever_used_;
   int header_write_size_;
