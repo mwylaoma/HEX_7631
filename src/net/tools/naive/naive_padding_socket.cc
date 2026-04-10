@@ -190,6 +190,9 @@ int NaivePaddingSocket::WritePaddingV1(
     CompletionOnceCallback callback,
     const NetworkTrafficAnnotationTag& traffic_annotation) {
   DCHECK(write_buf_ == nullptr);
+  if (write_buf_ != nullptr) {
+    return ERR_UNEXPECTED;
+  }
 
   int padding_size;
   if (direction_ == kServer) {

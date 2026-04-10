@@ -508,8 +508,9 @@ void HttpProxyServerSocket::ConsumeBufferedBytes(size_t count) {
     buffer_offset_ = 0;
     return;
   }
-  if (buffer_.size() >= kBufferCompactionThresholdDivisor &&
-      buffer_offset_ >= buffer_.size() / kBufferCompactionThresholdDivisor) {
+  const size_t compaction_threshold =
+      std::max<size_t>(1, buffer_.size() / kBufferCompactionThresholdDivisor);
+  if (buffer_offset_ >= compaction_threshold) {
     buffer_.erase(0, buffer_offset_);
     buffer_offset_ = 0;
   }
