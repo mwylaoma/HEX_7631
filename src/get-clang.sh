@@ -86,13 +86,22 @@ case "$target_os" in
   ;;
 esac
 if [ "$WITH_PGO" ]; then
-  PGO_PATH=$(cat chrome/build/$WITH_PGO.pgo.txt)
-fi
-if [ "$WITH_PGO" -a ! -f chrome/build/pgo_profiles/"$PGO_PATH" ]; then
-  mkdir -p chrome/build/pgo_profiles
-  cd chrome/build/pgo_profiles
-  curl --limit-rate 10M -LO "https://storage.googleapis.com/chromium-optimization-profiles/pgo_profiles/$PGO_PATH"
-  cd ../../..
+  PGO_PATH=$(cat "chrome/build/$WITH_PGO.pgo.txt")
+  PGO_FILE="chrome/build/pgo_profiles/$PGO_PATH"
+  LLVM_PROFDATA=third_party/llvm-build/Release+Asserts/bin/llvm-profdata
+  if [ "$host_os" = win ]; then
+    LLVM_PROFDATA="$LLVM_PROFDATA.exe"
+  fi
+  if [ -f "$PGO_FILE" ] && ! "$LLVM_PROFDATA" show "$PGO_FILE" >/dev/null 2>&1; then
+    echo "Removing incompatible PGO profile $PGO_FILE"
+    rm -f "$PGO_FILE"
+  fi
+  if [ ! -f "$PGO_FILE" ]; then
+    mkdir -p chrome/build/pgo_profiles
+    cd chrome/build/pgo_profiles
+    curl --limit-rate 10M -LO "https://storage.googleapis.com/chromium-optimization-profiles/pgo_profiles/$PGO_PATH"
+    cd ../../..
+  fi
 fi
 
 if [ "$target_os" = android -a ! -d third_party/android_toolchain/ndk ]; then
