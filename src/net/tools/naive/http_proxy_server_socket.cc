@@ -344,6 +344,7 @@ int HttpProxyServerSocket::DoHeaderReadComplete(int result) {
   }
 
   const std::string_view method = buffer_view.substr(0, first_space);
+  std::string uri_storage;
   std::string_view uri =
       buffer_view.substr(first_space + 1, second_space - (first_space + 1));
   const std::string_view version =
@@ -405,11 +406,11 @@ int HttpProxyServerSocket::DoHeaderReadComplete(int result) {
       headers.SetHeader(HttpRequestHeaders::kHost, *host_str);
     }
     // Host is already known. Converts any absolute URI to relative.
-    std::string sanitized_uri = url.path();
+    uri_storage = url.path();
     if (url.has_query()) {
-      sanitized_uri.append("?").append(url.query());
+      uri_storage.append("?").append(url.query());
     }
-    uri = sanitized_uri;
+    uri = uri_storage;
 
     request_endpoint_.set_host(host);
     request_endpoint_.set_port(port);
@@ -427,11 +428,12 @@ int HttpProxyServerSocket::DoHeaderReadComplete(int result) {
     sanitized_headers.RemoveHeader(HttpRequestHeaders::kProxyConnection);
     sanitized_headers.RemoveHeader(HttpRequestHeaders::kProxyAuthorization);
     const std::string sanitized_headers_str = sanitized_headers.ToString();
+    const size_t payload_size =
+        buffer_.size() > header_end + 4 ? buffer_.size() - (header_end + 4) : 0;
     std::string sanitized_request;
     sanitized_request.reserve(method.size() + 1 + uri.size() + 1 +
                               version.size() + 2 +
-                              sanitized_headers_str.size() +
-                              (buffer_.size() - (header_end + 4)));
+                              sanitized_headers_str.size() + payload_size);
     sanitized_request.append(method);
     sanitized_request.push_back(' ');
     sanitized_request.append(uri);
