@@ -38,6 +38,8 @@ namespace {
 constexpr int kBufferSize = 64 * 1024;
 constexpr size_t kMaxHeaderSize = 64 * 1024;
 constexpr size_t kBufferCompactionThresholdDivisor = 2;
+constexpr size_t kRequestLineSpaces = 2;
+constexpr size_t kRequestLineCrlf = 2;
 constexpr char kResponseHeader[] = "HTTP/1.1 200 OK\r\nPadding: ";
 constexpr int kResponseHeaderSize = sizeof(kResponseHeader) - 1;
 // A plain 200 is 10 bytes. Expected 48 bytes. "Padding" uses up 7 bytes.
@@ -320,8 +322,8 @@ int HttpProxyServerSocket::DoHeaderReadComplete(int result) {
     return ERR_MSG_TOO_BIG;
   }
 
-  std::string_view buffer_view(buffer_);
-  buffer_view.remove_prefix(buffer_offset_);
+  std::string_view buffer_view(buffer_.data() + buffer_offset_,
+                               buffer_.size() - buffer_offset_);
 
   size_t header_end = buffer_view.find("\r\n\r\n");
   if (header_end == std::string::npos) {
@@ -433,9 +435,8 @@ int HttpProxyServerSocket::DoHeaderReadComplete(int result) {
     const size_t payload_size =
         buffer_.size() > payload_offset ? buffer_.size() - payload_offset : 0;
     std::string sanitized_request;
-    // method + ' ' + uri + ' ' + version + CRLF + headers + payload.
-    sanitized_request.reserve(method.size() + 1 + uri_str.size() + 1 +
-                              version.size() + 2 +
+    sanitized_request.reserve(method.size() + uri_str.size() + version.size() +
+                              kRequestLineSpaces + kRequestLineCrlf +
                               sanitized_headers_str.size() + payload_size);
     sanitized_request.append(method);
     sanitized_request.push_back(' ');
@@ -444,8 +445,8 @@ int HttpProxyServerSocket::DoHeaderReadComplete(int result) {
     sanitized_request.append(version);
     sanitized_request.append("\r\n");
     sanitized_request.append(sanitized_headers_str);
-    if (buffer_.size() > payload_offset) {
-      sanitized_request.append(buffer_, payload_offset);
+    if (payload_size > 0) {
+      sanitized_request.append(buffer_, payload_offset, payload_size);
     }
     buffer_.swap(sanitized_request);
     buffer_offset_ = 0;
