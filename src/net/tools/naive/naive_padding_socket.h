@@ -95,6 +95,7 @@ class NaivePaddingSocket {
 
   int write_user_payload_len_ = 0;
   CompletionOnceCallback write_callback_;
+  scoped_refptr<IOBuffer> write_padding_buf_;
   scoped_refptr<DrainableIOBuffer> write_buf_;
 
   NaivePaddingFramer framer_;

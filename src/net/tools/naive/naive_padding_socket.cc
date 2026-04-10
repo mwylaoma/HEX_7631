@@ -27,6 +27,7 @@ NaivePaddingSocket::NaivePaddingSocket(StreamSocket* transport_socket,
       padding_type_(padding_type),
       direction_(direction),
       read_buf_(base::MakeRefCounted<IOBufferWithSize>(kMaxBufferSize)),
+      write_padding_buf_(base::MakeRefCounted<IOBufferWithSize>(kMaxBufferSize)),
       framer_(kFirstPaddings) {}
 
 NaivePaddingSocket::~NaivePaddingSocket() {
@@ -190,7 +191,6 @@ int NaivePaddingSocket::WritePaddingV1(
     const NetworkTrafficAnnotationTag& traffic_annotation) {
   DCHECK(write_buf_ == nullptr);
 
-  auto padded = base::MakeRefCounted<IOBufferWithSize>(kMaxBufferSize);
   int padding_size;
   if (direction_ == kServer) {
     if (buf_len < 100) {
@@ -203,12 +203,12 @@ int NaivePaddingSocket::WritePaddingV1(
     padding_size = base::RandInt(0, framer_.max_padding_size());
   }
   int write_buf_len =
-      framer_.Write(buf->data(), buf_len, padding_size, padded->data(),
-                    kMaxBufferSize, write_user_payload_len_);
+      framer_.Write(buf->data(), buf_len, padding_size, write_padding_buf_->data(),
+                     kMaxBufferSize, write_user_payload_len_);
   // Using DrainableIOBuffer here because we do not want to
   // repeatedly encode the padding frames when short writes happen.
-  write_buf_ =
-      base::MakeRefCounted<DrainableIOBuffer>(std::move(padded), write_buf_len);
+  write_buf_ = base::MakeRefCounted<DrainableIOBuffer>(write_padding_buf_,
+                                                       write_buf_len);
 
   int rv = WritePaddingV1Drain(traffic_annotation);
   if (rv == ERR_IO_PENDING) {

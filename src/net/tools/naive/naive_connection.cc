@@ -340,8 +340,10 @@ void NaiveConnection::Pull(Direction from, Direction to) {
   if (errors_[kClient] < 0 || errors_[kServer] < 0)
     return;
 
+  if (!read_buffers_[from]) {
+    read_buffers_[from] = base::MakeRefCounted<IOBufferWithSize>(kBufferSize);
+  }
   int read_size = kBufferSize;
-  read_buffers_[from] = base::MakeRefCounted<IOBufferWithSize>(kBufferSize);
 
   DCHECK(sockets_[from]);
   int rv = sockets_[from]->Read(
@@ -358,7 +360,7 @@ void NaiveConnection::Pull(Direction from, Direction to) {
 
 void NaiveConnection::Push(Direction from, Direction to, int size) {
   write_buffers_[to] = base::MakeRefCounted<DrainableIOBuffer>(
-      std::move(read_buffers_[from]), size);
+      read_buffers_[from], size);
   write_pending_[to] = true;
   DCHECK(sockets_[to]);
   int rv = sockets_[to]->Write(
