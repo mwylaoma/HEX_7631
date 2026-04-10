@@ -39,7 +39,7 @@ constexpr int kBufferSize = 64 * 1024;
 constexpr size_t kMaxHeaderSize = 64 * 1024;
 constexpr size_t kBufferCompactionThresholdDivisor = 2;
 constexpr size_t kRequestLineSpaces = 2;
-constexpr size_t kRequestLineCrlf = 2;
+constexpr size_t kRequestLineCrlfLength = 2;
 constexpr char kResponseHeader[] = "HTTP/1.1 200 OK\r\nPadding: ";
 constexpr int kResponseHeaderSize = sizeof(kResponseHeader) - 1;
 // A plain 200 is 10 bytes. Expected 48 bytes. "Padding" uses up 7 bytes.
@@ -436,7 +436,7 @@ int HttpProxyServerSocket::DoHeaderReadComplete(int result) {
         buffer_.size() > payload_offset ? buffer_.size() - payload_offset : 0;
     std::string sanitized_request;
     sanitized_request.reserve(method.size() + uri_str.size() + version.size() +
-                              kRequestLineSpaces + kRequestLineCrlf +
+                              kRequestLineSpaces + kRequestLineCrlfLength +
                               sanitized_headers_str.size() + payload_size);
     sanitized_request.append(method);
     sanitized_request.push_back(' ');
@@ -508,7 +508,8 @@ void HttpProxyServerSocket::ConsumeBufferedBytes(size_t count) {
     buffer_offset_ = 0;
     return;
   }
-  if (buffer_offset_ >= buffer_.size() / kBufferCompactionThresholdDivisor) {
+  if (buffer_.size() >= kBufferCompactionThresholdDivisor &&
+      buffer_offset_ >= buffer_.size() / kBufferCompactionThresholdDivisor) {
     buffer_.erase(0, buffer_offset_);
     buffer_offset_ = 0;
   }
