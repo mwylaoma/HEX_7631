@@ -37,6 +37,7 @@ namespace net {
 namespace {
 constexpr int kBufferSize = 64 * 1024;
 constexpr size_t kMaxHeaderSize = 64 * 1024;
+constexpr size_t kBufferCompactionThresholdDivisor = 2;
 constexpr char kResponseHeader[] = "HTTP/1.1 200 OK\r\nPadding: ";
 constexpr int kResponseHeaderSize = sizeof(kResponseHeader) - 1;
 // A plain 200 is 10 bytes. Expected 48 bytes. "Padding" uses up 7 bytes.
@@ -344,13 +345,12 @@ int HttpProxyServerSocket::DoHeaderReadComplete(int result) {
   }
 
   const std::string_view method = buffer_view.substr(0, first_space);
-  std::string uri_storage;
-  std::string_view uri =
+  const std::string_view uri_view =
       buffer_view.substr(first_space + 1, second_space - (first_space + 1));
   const std::string_view version =
       buffer_view.substr(second_space + 1, first_line_end - (second_space + 1));
   if (method == HttpRequestHeaders::kConnectMethod) {
-    request_endpoint_ = HostPortPair::FromString(uri);
+    request_endpoint_ = HostPortPair::FromString(uri_view);
   } else {
     // postprobe endpoint handling
     is_http_1_0 = true;
@@ -373,7 +373,8 @@ int HttpProxyServerSocket::DoHeaderReadComplete(int result) {
   }
 
   if (is_http_1_0) {
-    GURL url(std::string(uri));
+    std::string uri(uri_view);
+    GURL url(uri);
     if (!url.is_valid()) {
       LOG(WARNING) << "Invalid URI: " << uri;
       return ERR_INVALID_ARGUMENT;
@@ -406,11 +407,10 @@ int HttpProxyServerSocket::DoHeaderReadComplete(int result) {
       headers.SetHeader(HttpRequestHeaders::kHost, *host_str);
     }
     // Host is already known. Converts any absolute URI to relative.
-    uri_storage = url.path();
+    uri = url.path();
     if (url.has_query()) {
-      uri_storage.append("?").append(url.query());
+      uri.append("?").append(url.query());
     }
-    uri = uri_storage;
 
     request_endpoint_.set_host(host);
     request_endpoint_.set_port(port);
@@ -504,7 +504,8 @@ void HttpProxyServerSocket::ConsumeBufferedBytes(size_t count) {
     buffer_offset_ = 0;
     return;
   }
-  if (buffer_offset_ >= kBufferSize && buffer_offset_ * 2 >= buffer_.size()) {
+  if (buffer_offset_ >= kBufferSize &&
+      buffer_offset_ * kBufferCompactionThresholdDivisor >= buffer_.size()) {
     buffer_.erase(0, buffer_offset_);
     buffer_offset_ = 0;
   }
