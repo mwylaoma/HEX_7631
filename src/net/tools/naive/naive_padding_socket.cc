@@ -189,7 +189,6 @@ int NaivePaddingSocket::WritePaddingV1(
     int buf_len,
     CompletionOnceCallback callback,
     const NetworkTrafficAnnotationTag& traffic_annotation) {
-  DCHECK(write_buf_ == nullptr);
   if (write_buf_ != nullptr) {
     return ERR_UNEXPECTED;
   }
@@ -206,8 +205,9 @@ int NaivePaddingSocket::WritePaddingV1(
     padding_size = base::RandInt(0, framer_.max_padding_size());
   }
   int write_buf_len =
-      framer_.Write(buf->data(), buf_len, padding_size, write_padding_buf_->data(),
-                     kMaxBufferSize, write_user_payload_len_);
+      framer_.Write(buf->data(), buf_len, padding_size,
+                    write_padding_buf_->data(), kMaxBufferSize,
+                    write_user_payload_len_);
   // Using DrainableIOBuffer here because we do not want to
   // repeatedly encode the padding frames when short writes happen.
   write_buf_ = base::MakeRefCounted<DrainableIOBuffer>(write_padding_buf_,
