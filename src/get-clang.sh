@@ -97,10 +97,11 @@ if [ "$WITH_PGO" ]; then
   if [ "$host_os" = win ]; then
     LLVM_PROFDATA="$LLVM_PROFDATA.exe"
   fi
-  if [ -f "$PGO_FILE" ] && [ -x "$LLVM_PROFDATA" ] &&
-     ! "$LLVM_PROFDATA" show "$PGO_FILE" >/dev/null 2>&1; then
-    echo "Removing incompatible PGO profile $PGO_FILE"
-    rm -f "$PGO_FILE"
+  if [ -f "$PGO_FILE" ] && [ -x "$LLVM_PROFDATA" ]; then
+    if ! "$LLVM_PROFDATA" show "$PGO_FILE" >/dev/null 2>&1; then
+      echo "Removing incompatible PGO profile $PGO_FILE"
+      rm -f "$PGO_FILE"
+    fi
   fi
   if [ ! -f "$PGO_FILE" ]; then
     mkdir -p chrome/build/pgo_profiles
