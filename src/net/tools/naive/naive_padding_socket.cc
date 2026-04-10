@@ -9,6 +9,7 @@
 #include <tuple>
 #include <utility>
 
+#include "base/logging.h"
 #include "base/rand_util.h"
 #include "base/task/single_thread_task_runner.h"
 #include "net/base/io_buffer.h"
@@ -190,6 +191,7 @@ int NaivePaddingSocket::WritePaddingV1(
     CompletionOnceCallback callback,
     const NetworkTrafficAnnotationTag& traffic_annotation) {
   if (write_buf_ != nullptr) {
+    DLOG(ERROR) << "Concurrent padded write on NaivePaddingSocket";
     return ERR_UNEXPECTED;
   }
 

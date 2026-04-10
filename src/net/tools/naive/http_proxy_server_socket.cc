@@ -350,7 +350,7 @@ int HttpProxyServerSocket::DoHeaderReadComplete(int result) {
       buffer_view.substr(first_space + 1, second_space - (first_space + 1));
   const std::string_view version =
       buffer_view.substr(second_space + 1, first_line_end - (second_space + 1));
-  std::optional<std::string> uri_str;
+  std::optional<std::string> uri_string;
   if (method == HttpRequestHeaders::kConnectMethod) {
     request_endpoint_ = HostPortPair::FromString(uri_view);
   } else {
@@ -408,9 +408,9 @@ int HttpProxyServerSocket::DoHeaderReadComplete(int result) {
       headers.SetHeader(HttpRequestHeaders::kHost, *host_str);
     }
     // Host is already known. Converts any absolute URI to relative.
-    uri_str.emplace(url.path());
+    uri_string.emplace(url.path());
     if (url.has_query()) {
-      uri_str->append("?").append(url.query());
+      uri_string->append("?").append(url.query());
     }
 
     request_endpoint_.set_host(host);
@@ -424,6 +424,7 @@ int HttpProxyServerSocket::DoHeaderReadComplete(int result) {
   padding_detector_delegate_->SetClientPaddingType(*padding_type);
 
   if (is_http_1_0) {
+    DCHECK(uri_string.has_value());
     // Regenerates http header to make sure don't leak them to end servers
     HttpRequestHeaders sanitized_headers = headers;
     sanitized_headers.RemoveHeader(HttpRequestHeaders::kProxyConnection);
@@ -433,12 +434,13 @@ int HttpProxyServerSocket::DoHeaderReadComplete(int result) {
     const size_t payload_size =
         buffer_.size() > payload_offset ? buffer_.size() - payload_offset : 0;
     std::string sanitized_request;
-    sanitized_request.reserve(method.size() + uri_str->size() + version.size() +
+    sanitized_request.reserve(method.size() + uri_string->size() +
+                              version.size() +
                               kRequestLineExtraChars +
                               sanitized_headers_str.size() + payload_size);
     sanitized_request.append(method);
     sanitized_request.push_back(' ');
-    sanitized_request.append(*uri_str);
+    sanitized_request.append(*uri_string);
     sanitized_request.push_back(' ');
     sanitized_request.append(version);
     sanitized_request.append("\r\n");
