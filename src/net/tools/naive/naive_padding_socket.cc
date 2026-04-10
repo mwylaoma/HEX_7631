@@ -191,7 +191,8 @@ int NaivePaddingSocket::WritePaddingV1(
     CompletionOnceCallback callback,
     const NetworkTrafficAnnotationTag& traffic_annotation) {
   if (write_buf_ != nullptr) {
-    DLOG(ERROR) << "Concurrent padded write on NaivePaddingSocket";
+    DLOG(ERROR) << "Concurrent padded write on NaivePaddingSocket "
+                << (direction_ == kServer ? "server" : "client");
     return ERR_UNEXPECTED;
   }
 

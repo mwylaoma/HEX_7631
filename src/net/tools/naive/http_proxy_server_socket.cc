@@ -38,6 +38,8 @@ namespace {
 constexpr int kBufferSize = 64 * 1024;
 constexpr size_t kMaxHeaderSize = 64 * 1024;
 constexpr size_t kBufferCompactionThresholdDivisor = 2;
+constexpr size_t kMinBufferCompactionBytes = 1024;
+// Two spaces plus the trailing "\r\n".
 constexpr size_t kRequestLineDelimiterBytes = 4;
 constexpr char kResponseHeader[] = "HTTP/1.1 200 OK\r\nPadding: ";
 constexpr int kResponseHeaderSize = sizeof(kResponseHeader) - 1;
@@ -509,7 +511,8 @@ void HttpProxyServerSocket::ConsumeBufferedBytes(size_t count) {
     return;
   }
   const size_t compaction_threshold =
-      std::max<size_t>(1, buffer_.size() / kBufferCompactionThresholdDivisor);
+      std::max(kMinBufferCompactionBytes,
+               buffer_.size() / kBufferCompactionThresholdDivisor);
   if (buffer_offset_ >= compaction_threshold) {
     buffer_.erase(0, buffer_offset_);
     buffer_offset_ = 0;
