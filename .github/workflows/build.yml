@@ -26,12 +26,12 @@ jobs:
             src/third_party/llvm-build/Release+Asserts/
             src/gn/
             src/qemu-user*.deb
-          key: toolchains-posix-${{ hashFiles('CHROMIUM_VERSION') }}-v${{ env.CACHE_EPOCH }}
+          key: toolchains-posix-${{ hashFiles('CHROMIUM_VERSION', 'src/tools/clang/scripts/update.py', 'src/chrome/build/*.pgo.txt') }}-v${{ env.CACHE_EPOCH }}
       - name: Cache PGO (Linux, OpenWrt)
         uses: actions/cache@v4
         with:
           path: src/chrome/build/pgo_profiles/
-          key: pgo-linux-openwrt-${{ hashFiles('CHROMIUM_VERSION') }}-v${{ env.CACHE_EPOCH }}
+          key: pgo-linux-openwrt-${{ hashFiles('CHROMIUM_VERSION', 'src/tools/clang/scripts/update.py', 'src/chrome/build/*.pgo.txt') }}-v${{ env.CACHE_EPOCH }}
       - name: Cache AFDO (Android)
         uses: actions/cache@v4
         with:
@@ -60,17 +60,17 @@ jobs:
             src/gn/
             ~/.cargo/bin/
             ~/bin/ninja.exe
-          key: toolchains-win-${{ hashFiles('CHROMIUM_VERSION') }}-v${{ env.CACHE_EPOCH }}
+          key: toolchains-win-${{ hashFiles('CHROMIUM_VERSION', 'src/tools/clang/scripts/update.py', 'src/chrome/build/*.pgo.txt') }}-v${{ env.CACHE_EPOCH }}
       - name: Cache PGO (win64)
         uses: actions/cache@v4
         with:
           path: src/chrome/build/pgo_profiles/chrome-win64-*
-          key: pgo-win64-${{ hashFiles('CHROMIUM_VERSION') }}-v${{ env.CACHE_EPOCH }}
+          key: pgo-win64-${{ hashFiles('CHROMIUM_VERSION', 'src/tools/clang/scripts/update.py', 'src/chrome/build/*.pgo.txt') }}-v${{ env.CACHE_EPOCH }}
       - name: Cache PGO (win32)
         uses: actions/cache@v4
         with:
           path: src/chrome/build/pgo_profiles/chrome-win32-*
-          key: pgo-win32-arm64-${{ hashFiles('CHROMIUM_VERSION') }}-v${{ env.CACHE_EPOCH }}
+          key: pgo-win32-arm64-${{ hashFiles('CHROMIUM_VERSION', 'src/tools/clang/scripts/update.py', 'src/chrome/build/*.pgo.txt') }}-v${{ env.CACHE_EPOCH }}
       - run: EXTRA_FLAGS='target_cpu="x64"' ./get-clang.sh
       - run: EXTRA_FLAGS='target_cpu="x86"' ./get-clang.sh
       - run: |
@@ -88,7 +88,7 @@ jobs:
             src/third_party/llvm-build/Release+Asserts/
             src/chrome/build/pgo_profiles/chrome-mac-*
             src/gn/
-          key: toolchains-pgo-mac-${{ hashFiles('CHROMIUM_VERSION') }}-v${{ env.CACHE_EPOCH }}
+          key: toolchains-pgo-mac-${{ hashFiles('CHROMIUM_VERSION', 'src/tools/clang/scripts/update.py', 'src/chrome/build/*.pgo.txt') }}-v${{ env.CACHE_EPOCH }}
       - run: EXTRA_FLAGS='target_cpu="x64"' ./get-clang.sh
       - run: EXTRA_FLAGS='target_cpu="arm64"' ./get-clang.sh
   linux:
@@ -110,12 +110,12 @@ jobs:
             src/third_party/llvm-build/Release+Asserts/
             src/gn/
             src/qemu-user*.deb
-          key: toolchains-posix-${{ hashFiles('CHROMIUM_VERSION') }}-v${{ env.CACHE_EPOCH }}
+          key: toolchains-posix-${{ hashFiles('CHROMIUM_VERSION', 'src/tools/clang/scripts/update.py', 'src/chrome/build/*.pgo.txt') }}-v${{ env.CACHE_EPOCH }}
       - name: Cache PGO (Linux, OpenWrt)
         uses: actions/cache@v4
         with:
           path: src/chrome/build/pgo_profiles/
-          key: pgo-linux-openwrt-${{ hashFiles('CHROMIUM_VERSION') }}-v${{ env.CACHE_EPOCH }}
+          key: pgo-linux-openwrt-${{ hashFiles('CHROMIUM_VERSION', 'src/tools/clang/scripts/update.py', 'src/chrome/build/*.pgo.txt') }}-v${{ env.CACHE_EPOCH }}
       - name: Regenerate Debian keyring
         run: |
           rm -f ./build/linux/sysroot_scripts/keyring.gpg
@@ -134,8 +134,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/ccache
-          key: ccache-linux-${{ matrix.arch }}-${{ hashFiles('CHROMIUM_VERSION') }}-${{ steps.ccache-timestamp.outputs.CCACHE_TIMESTAMP }}
-          restore-keys: ccache-linux-${{ matrix.arch }}-${{ hashFiles('CHROMIUM_VERSION') }}-
+          key: ccache-linux-${{ matrix.arch }}-${{ hashFiles('CHROMIUM_VERSION', 'src/tools/clang/scripts/update.py', 'src/chrome/build/*.pgo.txt') }}-${{ steps.ccache-timestamp.outputs.CCACHE_TIMESTAMP }}
+          restore-keys: ccache-linux-${{ matrix.arch }}-${{ hashFiles('CHROMIUM_VERSION', 'src/tools/clang/scripts/update.py', 'src/chrome/build/*.pgo.txt') }}-
       - name: Install APT packages
         run: |
           sudo apt update
@@ -196,7 +196,7 @@ jobs:
             src/third_party/llvm-build/Release+Asserts/
             src/gn/
             src/qemu-user*.deb
-          key: toolchains-posix-${{ hashFiles('CHROMIUM_VERSION') }}-v${{ env.CACHE_EPOCH }}
+          key: toolchains-posix-${{ hashFiles('CHROMIUM_VERSION', 'src/tools/clang/scripts/update.py', 'src/chrome/build/*.pgo.txt') }}-v${{ env.CACHE_EPOCH }}
       - name: Cache AFDO (Android)
         uses: actions/cache@v4
         with:
@@ -218,8 +218,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/ccache
-          key: ccache-android-${{ matrix.arch }}-${{ hashFiles('CHROMIUM_VERSION') }}-${{ steps.ccache-timestamp.outputs.CCACHE_TIMESTAMP }}
-          restore-keys: ccache-android-${{ matrix.arch }}-${{ hashFiles('CHROMIUM_VERSION') }}-
+          key: ccache-android-${{ matrix.arch }}-${{ hashFiles('CHROMIUM_VERSION', 'src/tools/clang/scripts/update.py', 'src/chrome/build/*.pgo.txt') }}-${{ steps.ccache-timestamp.outputs.CCACHE_TIMESTAMP }}
+          restore-keys: ccache-android-${{ matrix.arch }}-${{ hashFiles('CHROMIUM_VERSION', 'src/tools/clang/scripts/update.py', 'src/chrome/build/*.pgo.txt') }}-
       - name: Install APT packages
         run: |
           sudo apt update
@@ -281,27 +281,27 @@ jobs:
             src/gn/
             ~/.cargo/bin/
             ~/bin/ninja.exe
-          key: toolchains-win-${{ hashFiles('CHROMIUM_VERSION') }}-v${{ env.CACHE_EPOCH }}
+          key: toolchains-win-${{ hashFiles('CHROMIUM_VERSION', 'src/tools/clang/scripts/update.py', 'src/chrome/build/*.pgo.txt') }}-v${{ env.CACHE_EPOCH }}
       - name: Cache PGO (win64)
         if: ${{ matrix.arch == 'x64' }}
         uses: actions/cache@v4
         with:
           path: src/chrome/build/pgo_profiles/chrome-win64-*
-          key: pgo-win64-${{ hashFiles('CHROMIUM_VERSION') }}-v${{ env.CACHE_EPOCH }}
+          key: pgo-win64-${{ hashFiles('CHROMIUM_VERSION', 'src/tools/clang/scripts/update.py', 'src/chrome/build/*.pgo.txt') }}-v${{ env.CACHE_EPOCH }}
       - name: Cache PGO (win32)
         if: ${{ matrix.arch != 'x64' }}
         uses: actions/cache@v4
         with:
           path: src/chrome/build/pgo_profiles/chrome-win32-*
-          key: pgo-win32-arm64-${{ hashFiles('CHROMIUM_VERSION') }}-v${{ env.CACHE_EPOCH }}
+          key: pgo-win32-arm64-${{ hashFiles('CHROMIUM_VERSION', 'src/tools/clang/scripts/update.py', 'src/chrome/build/*.pgo.txt') }}-v${{ env.CACHE_EPOCH }}
       - id: ccache-timestamp
         run: echo "CCACHE_TIMESTAMP=$(date +%s)" >>$GITHUB_OUTPUT
       - name: Cache ccache files
         uses: actions/cache@v4
         with:
           path: ~/AppData/Local/Mozilla/sccache
-          key: ccache-win-${{ matrix.arch }}-${{ hashFiles('CHROMIUM_VERSION') }}-${{ steps.ccache-timestamp.outputs.CCACHE_TIMESTAMP }}
-          restore-keys: ccache-win-${{ matrix.arch }}-${{ hashFiles('CHROMIUM_VERSION') }}-
+          key: ccache-win-${{ matrix.arch }}-${{ hashFiles('CHROMIUM_VERSION', 'src/tools/clang/scripts/update.py', 'src/chrome/build/*.pgo.txt') }}-${{ steps.ccache-timestamp.outputs.CCACHE_TIMESTAMP }}
+          restore-keys: ccache-win-${{ matrix.arch }}-${{ hashFiles('CHROMIUM_VERSION', 'src/tools/clang/scripts/update.py', 'src/chrome/build/*.pgo.txt') }}-
       - run: ./get-clang.sh
       - run: ~/.cargo/bin/sccache -z
       - run: ./build.sh
@@ -344,15 +344,15 @@ jobs:
             src/third_party/llvm-build/Release+Asserts/
             src/chrome/build/pgo_profiles/chrome-mac-*
             src/gn/
-          key: toolchains-pgo-mac-${{ hashFiles('CHROMIUM_VERSION') }}-v${{ env.CACHE_EPOCH }}
+          key: toolchains-pgo-mac-${{ hashFiles('CHROMIUM_VERSION', 'src/tools/clang/scripts/update.py', 'src/chrome/build/*.pgo.txt') }}-v${{ env.CACHE_EPOCH }}
       - id: ccache-timestamp
         run: echo "CCACHE_TIMESTAMP=$(date +%s)" >>$GITHUB_OUTPUT
       - name: Cache ccache files
         uses: actions/cache@v4
         with:
           path: ~/Library/Caches/ccache
-          key: ccache-mac-${{ matrix.arch }}-${{ hashFiles('CHROMIUM_VERSION') }}-${{ steps.ccache-timestamp.outputs.CCACHE_TIMESTAMP }}
-          restore-keys: ccache-mac-${{ matrix.arch }}-${{ hashFiles('CHROMIUM_VERSION') }}-
+          key: ccache-mac-${{ matrix.arch }}-${{ hashFiles('CHROMIUM_VERSION', 'src/tools/clang/scripts/update.py', 'src/chrome/build/*.pgo.txt') }}-${{ steps.ccache-timestamp.outputs.CCACHE_TIMESTAMP }}
+          restore-keys: ccache-mac-${{ matrix.arch }}-${{ hashFiles('CHROMIUM_VERSION', 'src/tools/clang/scripts/update.py', 'src/chrome/build/*.pgo.txt') }}-
       - run: brew install ninja ccache
       - run: pip install setuptools
       - run: ./get-clang.sh
@@ -531,12 +531,12 @@ jobs:
             src/third_party/llvm-build/Release+Asserts/
             src/gn/
             src/qemu-user*.deb
-          key: toolchains-posix-${{ hashFiles('CHROMIUM_VERSION') }}-v${{ env.CACHE_EPOCH }}
+          key: toolchains-posix-${{ hashFiles('CHROMIUM_VERSION', 'src/tools/clang/scripts/update.py', 'src/chrome/build/*.pgo.txt') }}-v${{ env.CACHE_EPOCH }}
       - name: Cache PGO (Linux, OpenWrt)
         uses: actions/cache@v4
         with:
           path: src/chrome/build/pgo_profiles/
-          key: pgo-linux-openwrt-${{ hashFiles('CHROMIUM_VERSION') }}-v${{ env.CACHE_EPOCH }}
+          key: pgo-linux-openwrt-${{ hashFiles('CHROMIUM_VERSION', 'src/tools/clang/scripts/update.py', 'src/chrome/build/*.pgo.txt') }}-v${{ env.CACHE_EPOCH }}
       - name: Cache sysroot
         uses: actions/cache@v4
         with:
@@ -548,8 +548,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/ccache
-          key: ccache-openwrt-${{ matrix.arch }}-${{ hashFiles('CHROMIUM_VERSION') }}-${{ steps.ccache-timestamp.outputs.CCACHE_TIMESTAMP }}
-          restore-keys: ccache-openwrt-${{ matrix.arch }}-${{ hashFiles('CHROMIUM_VERSION') }}-
+          key: ccache-openwrt-${{ matrix.arch }}-${{ hashFiles('CHROMIUM_VERSION', 'src/tools/clang/scripts/update.py', 'src/chrome/build/*.pgo.txt') }}-${{ steps.ccache-timestamp.outputs.CCACHE_TIMESTAMP }}
+          restore-keys: ccache-openwrt-${{ matrix.arch }}-${{ hashFiles('CHROMIUM_VERSION', 'src/tools/clang/scripts/update.py', 'src/chrome/build/*.pgo.txt') }}-
       - name: Install APT packages
         run: |
           sudo apt update
