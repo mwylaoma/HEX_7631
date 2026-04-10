@@ -98,12 +98,11 @@ if [ "$WITH_PGO" ]; then
     LLVM_PROFDATA="$LLVM_PROFDATA.exe"
   fi
   if [ -f "$PGO_FILE" ] && [ -x "$LLVM_PROFDATA" ]; then
-    if ! profdata_stderr=$("$LLVM_PROFDATA" show "$PGO_FILE" 2>&1 >/dev/null); then
-      if [ "$profdata_stderr" ]; then
-        echo "Removing unreadable PGO profile $PGO_FILE: $profdata_stderr" >&2
-      else
-        echo "Removing unreadable PGO profile $PGO_FILE: validation failed" >&2
-      fi
+    profdata_status=0
+    profdata_stderr=$("$LLVM_PROFDATA" show "$PGO_FILE" 2>&1 >/dev/null) ||
+      profdata_status=$?
+    if [ "$profdata_status" -ne 0 ]; then
+      echo "Removing unreadable PGO profile $PGO_FILE: ${profdata_stderr:-validation failed}" >&2
       rm -f "$PGO_FILE"
     fi
   fi
