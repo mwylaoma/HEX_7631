@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -86,6 +87,9 @@ int HttpProxyServerSocket::Connect(CompletionOnceCallback callback) {
 
   next_state_ = STATE_HEADER_READ;
   buffer_.clear();
+  buffer_offset_ = 0;
+  if (buffer_.capacity() < kBufferSize)
+    buffer_.reserve(kBufferSize);
 
   int rv = DoLoop(OK);
   if (rv == ERR_IO_PENDING) {
@@ -101,6 +105,7 @@ void HttpProxyServerSocket::Disconnect() {
   // Reset other states to make sure they aren't mistakenly used later.
   // These are the states initialized by Connect().
   next_state_ = STATE_NONE;
+  buffer_offset_ = 0;
   user_callback_.Reset();
 }
 
@@ -156,16 +161,11 @@ int HttpProxyServerSocket::Read(IOBuffer* buf,
 
   if (!buffer_.empty()) {
     was_ever_used_ = true;
-    int data_len = buffer_.size();
-    if (data_len <= buf_len) {
-      std::memcpy(buf->data(), buffer_.data(), data_len);
-      buffer_.clear();
-      return data_len;
-    } else {
-      std::memcpy(buf->data(), buffer_.data(), buf_len);
-      buffer_ = buffer_.substr(buf_len);
-      return buf_len;
-    }
+    const size_t data_len = buffer_.size() - buffer_offset_;
+    const size_t copy_len = std::min(data_len, static_cast<size_t>(buf_len));
+    std::memcpy(buf->data(), buffer_.data() + buffer_offset_, copy_len);
+    ConsumeBufferedBytes(copy_len);
+    return static_cast<int>(copy_len);
   }
 
   int rv = transport_->Read(
@@ -319,30 +319,35 @@ int HttpProxyServerSocket::DoHeaderReadComplete(int result) {
     return ERR_MSG_TOO_BIG;
   }
 
-  size_t header_end = buffer_.find("\r\n\r\n");
+  DCHECK_EQ(buffer_offset_, 0u);
+  std::string_view buffer_view(buffer_);
+
+  size_t header_end = buffer_view.find("\r\n\r\n");
   if (header_end == std::string::npos) {
     next_state_ = STATE_HEADER_READ;
     return OK;
   }
 
-  size_t first_line_end = buffer_.find("\r\n");
-  size_t first_space = buffer_.find(' ');
+  size_t first_line_end = buffer_view.find("\r\n");
+  size_t first_space = buffer_view.find(' ');
   bool is_http_1_0 = false;
   if (first_space == std::string::npos || first_space + 1 >= first_line_end) {
-    LOG(WARNING) << "Invalid request: " << buffer_.substr(0, first_line_end);
+    LOG(WARNING) << "Invalid request: "
+                 << std::string(buffer_view.substr(0, first_line_end));
     return ERR_INVALID_ARGUMENT;
   }
-  size_t second_space = buffer_.find(' ', first_space + 1);
+  size_t second_space = buffer_view.find(' ', first_space + 1);
   if (second_space == std::string::npos || second_space >= first_line_end) {
-    LOG(WARNING) << "Invalid request: " << buffer_.substr(0, first_line_end);
+    LOG(WARNING) << "Invalid request: "
+                 << std::string(buffer_view.substr(0, first_line_end));
     return ERR_INVALID_ARGUMENT;
   }
 
-  std::string method = buffer_.substr(0, first_space);
-  std::string uri =
-      buffer_.substr(first_space + 1, second_space - (first_space + 1));
-  std::string version =
-      buffer_.substr(second_space + 1, first_line_end - (second_space + 1));
+  const std::string_view method = buffer_view.substr(0, first_space);
+  std::string_view uri =
+      buffer_view.substr(first_space + 1, second_space - (first_space + 1));
+  const std::string_view version =
+      buffer_view.substr(second_space + 1, first_line_end - (second_space + 1));
   if (method == HttpRequestHeaders::kConnectMethod) {
     request_endpoint_ = HostPortPair::FromString(uri);
   } else {
@@ -352,10 +357,9 @@ int HttpProxyServerSocket::DoHeaderReadComplete(int result) {
 
   size_t second_line = first_line_end + 2;
   HttpRequestHeaders headers;
-  std::string headers_str;
   if (second_line < header_end) {
-    headers_str = buffer_.substr(second_line, header_end - second_line);
-    headers.AddHeadersFromString(headers_str);
+    headers.AddHeadersFromString(
+        std::string(buffer_view.substr(second_line, header_end - second_line)));
   }
 
   if (!basic_auth_.empty()) {
@@ -368,7 +372,7 @@ int HttpProxyServerSocket::DoHeaderReadComplete(int result) {
   }
 
   if (is_http_1_0) {
-    GURL url(uri);
+    GURL url(std::string(uri));
     if (!url.is_valid()) {
       LOG(WARNING) << "Invalid URI: " << uri;
       return ERR_INVALID_ARGUMENT;
@@ -401,10 +405,11 @@ int HttpProxyServerSocket::DoHeaderReadComplete(int result) {
       headers.SetHeader(HttpRequestHeaders::kHost, *host_str);
     }
     // Host is already known. Converts any absolute URI to relative.
-    uri = url.path();
+    std::string sanitized_uri = url.path();
     if (url.has_query()) {
-      uri.append("?").append(url.query());
+      sanitized_uri.append("?").append(url.query());
     }
+    uri = sanitized_uri;
 
     request_endpoint_.set_host(host);
     request_endpoint_.set_port(port);
@@ -421,20 +426,31 @@ int HttpProxyServerSocket::DoHeaderReadComplete(int result) {
     HttpRequestHeaders sanitized_headers = headers;
     sanitized_headers.RemoveHeader(HttpRequestHeaders::kProxyConnection);
     sanitized_headers.RemoveHeader(HttpRequestHeaders::kProxyAuthorization);
-    std::ostringstream ss;
-    ss << method << " " << uri << " " << version << "\r\n"
-       << sanitized_headers.ToString();
+    const std::string sanitized_headers_str = sanitized_headers.ToString();
+    std::string sanitized_request;
+    sanitized_request.reserve(method.size() + 1 + uri.size() + 1 +
+                              version.size() + 2 +
+                              sanitized_headers_str.size() +
+                              (buffer_.size() - (header_end + 4)));
+    sanitized_request.append(method);
+    sanitized_request.push_back(' ');
+    sanitized_request.append(uri);
+    sanitized_request.push_back(' ');
+    sanitized_request.append(version);
+    sanitized_request.append("\r\n");
+    sanitized_request.append(sanitized_headers_str);
     if (buffer_.size() > header_end + 4) {
-      ss << buffer_.substr(header_end + 4);
+      sanitized_request.append(buffer_, header_end + 4);
     }
-    buffer_ = ss.str();
+    buffer_.swap(sanitized_request);
+    buffer_offset_ = 0;
     // Skips padding write for raw http proxy
     completed_handshake_ = true;
     next_state_ = STATE_NONE;
     return OK;
   }
 
-  buffer_ = buffer_.substr(header_end + 4);
+  ConsumeBufferedBytes(header_end + 4);
 
   next_state_ = STATE_HEADER_WRITE;
   return OK;
@@ -476,6 +492,20 @@ int HttpProxyServerSocket::GetPeerAddress(IPEndPoint* address) const {
 
 int HttpProxyServerSocket::GetLocalAddress(IPEndPoint* address) const {
   return transport_->GetLocalAddress(address);
+}
+
+void HttpProxyServerSocket::ConsumeBufferedBytes(size_t count) {
+  DCHECK_LE(buffer_offset_ + count, buffer_.size());
+  buffer_offset_ += count;
+  if (buffer_offset_ == buffer_.size()) {
+    buffer_.clear();
+    buffer_offset_ = 0;
+    return;
+  }
+  if (buffer_offset_ >= kBufferSize && buffer_offset_ * 2 >= buffer_.size()) {
+    buffer_.erase(0, buffer_offset_);
+    buffer_offset_ = 0;
+  }
 }
 
 }  // namespace net
