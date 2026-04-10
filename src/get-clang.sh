@@ -86,13 +86,19 @@ case "$target_os" in
   ;;
 esac
 if [ "$WITH_PGO" ]; then
-  PGO_PATH=$(cat "chrome/build/$WITH_PGO.pgo.txt")
+  PGO_LIST="chrome/build/$WITH_PGO.pgo.txt"
+  if [ ! -r "$PGO_LIST" ]; then
+    echo "Missing PGO profile selector $PGO_LIST" >&2
+    exit 1
+  fi
+  PGO_PATH=$(cat "$PGO_LIST")
   PGO_FILE="chrome/build/pgo_profiles/$PGO_PATH"
   LLVM_PROFDATA=third_party/llvm-build/Release+Asserts/bin/llvm-profdata
   if [ "$host_os" = win ]; then
     LLVM_PROFDATA="$LLVM_PROFDATA.exe"
   fi
-  if [ -f "$PGO_FILE" ] && ! "$LLVM_PROFDATA" show "$PGO_FILE" >/dev/null 2>&1; then
+  if [ -f "$PGO_FILE" ] && [ -x "$LLVM_PROFDATA" ] &&
+     ! "$LLVM_PROFDATA" show "$PGO_FILE" >/dev/null 2>&1; then
     echo "Removing incompatible PGO profile $PGO_FILE"
     rm -f "$PGO_FILE"
   fi
