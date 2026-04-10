@@ -349,6 +349,7 @@ int HttpProxyServerSocket::DoHeaderReadComplete(int result) {
       buffer_view.substr(first_space + 1, second_space - (first_space + 1));
   const std::string_view version =
       buffer_view.substr(second_space + 1, first_line_end - (second_space + 1));
+  std::string uri_str;
   if (method == HttpRequestHeaders::kConnectMethod) {
     request_endpoint_ = HostPortPair::FromString(uri_view);
   } else {
@@ -373,10 +374,10 @@ int HttpProxyServerSocket::DoHeaderReadComplete(int result) {
   }
 
   if (is_http_1_0) {
-    std::string uri(uri_view);
-    GURL url(uri);
+    uri_str = std::string(uri_view);
+    GURL url(uri_str);
     if (!url.is_valid()) {
-      LOG(WARNING) << "Invalid URI: " << uri;
+      LOG(WARNING) << "Invalid URI: " << uri_str;
       return ERR_INVALID_ARGUMENT;
     }
 
@@ -394,7 +395,7 @@ int HttpProxyServerSocket::DoHeaderReadComplete(int result) {
       }
     } else {
       if (!url.has_host()) {
-        LOG(WARNING) << "Missing host: " << uri;
+        LOG(WARNING) << "Missing host: " << uri_str;
         return ERR_INVALID_ARGUMENT;
       }
       host = url.host();
@@ -407,9 +408,9 @@ int HttpProxyServerSocket::DoHeaderReadComplete(int result) {
       headers.SetHeader(HttpRequestHeaders::kHost, *host_str);
     }
     // Host is already known. Converts any absolute URI to relative.
-    uri = url.path();
+    uri_str = url.path();
     if (url.has_query()) {
-      uri.append("?").append(url.query());
+      uri_str.append("?").append(url.query());
     }
 
     request_endpoint_.set_host(host);
@@ -431,12 +432,12 @@ int HttpProxyServerSocket::DoHeaderReadComplete(int result) {
     const size_t payload_size =
         buffer_.size() > header_end + 4 ? buffer_.size() - (header_end + 4) : 0;
     std::string sanitized_request;
-    sanitized_request.reserve(method.size() + 1 + uri.size() + 1 +
+    sanitized_request.reserve(method.size() + 1 + uri_str.size() + 1 +
                               version.size() + 2 +
                               sanitized_headers_str.size() + payload_size);
     sanitized_request.append(method);
     sanitized_request.push_back(' ');
-    sanitized_request.append(uri);
+    sanitized_request.append(uri_str);
     sanitized_request.push_back(' ');
     sanitized_request.append(version);
     sanitized_request.append("\r\n");
@@ -505,7 +506,7 @@ void HttpProxyServerSocket::ConsumeBufferedBytes(size_t count) {
     return;
   }
   if (buffer_offset_ >= kBufferSize &&
-      buffer_offset_ * kBufferCompactionThresholdDivisor >= buffer_.size()) {
+      buffer_offset_ >= buffer_.size() / kBufferCompactionThresholdDivisor) {
     buffer_.erase(0, buffer_offset_);
     buffer_offset_ = 0;
   }
