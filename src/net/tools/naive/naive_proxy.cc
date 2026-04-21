@@ -21,6 +21,7 @@
 #include "net/socket/client_socket_pool_manager.h"
 #include "net/socket/server_socket.h"
 #include "net/socket/stream_socket.h"
+#include "net/socket/transport_client_socket.h"
 #include "net/tools/naive/http_proxy_server_socket.h"
 #include "net/tools/naive/naive_proxy_delegate.h"
 #include "net/tools/naive/socks5_server_socket.h"
@@ -109,6 +110,22 @@ void NaiveProxy::DoConnect() {
   const ProxyChain& proxy_server = proxy_info_.proxy_chain();
   auto padding_detector_delegate = std::make_unique<PaddingDetectorDelegate>(
       proxy_delegate, proxy_server, protocol_);
+
+  // Enable TCP_NODELAY on the client-facing accepted socket. Chromium's
+  // TCPServerSocket wraps accepted sockets in a TCPClientSocket without
+  // calling SetDefaultOptionsForClient(), so TCP_NODELAY is not set by
+  // default. Disabling Nagle on this local (loopback/LAN) leg avoids
+  // Nagle/delayed-ACK stalls on the small write/read/write patterns used by
+  // the SOCKS5 and HTTP CONNECT handshakes and by interactive traffic.
+  // This does not touch server-facing sockets (those are configured by
+  // Chromium's socket pool) and therefore has no effect on the wire
+  // fingerprint of the proxied HTTP/2/3 traffic. Accepted sockets originate
+  // from TCPServerSocket::ConvertAcceptedSocket, which always produces a
+  // TCPClientSocket (a TransportClientSocket).
+  if (accepted_socket_) {
+    static_cast<TransportClientSocket*>(accepted_socket_.get())
+        ->SetNoDelay(true);
+  }
 
   if (protocol_ == ClientProtocol::kSocks5) {
     socket = std::make_unique<Socks5ServerSocket>(std::move(accepted_socket_),
