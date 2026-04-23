@@ -6,6 +6,7 @@
 
 #include <cstring>
 #include <iterator>
+#include <optional>
 #include <utility>
 
 #include "base/logging.h"
@@ -18,7 +19,6 @@
 #include "net/dns/dns_response.h"
 #include "net/dns/dns_util.h"
 #include "net/socket/datagram_server_socket.h"
-#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace {
 constexpr int kUdpReadBufferSize = 1024;
@@ -102,7 +102,7 @@ int RedirectResolver::HandleReadResult(int result) {
 
   auto name_or = dns_names_util::NetworkToDottedName(query.qname());
   DnsResponse response;
-  absl::optional<DnsQuery> query_opt;
+  std::optional<DnsQuery> query_opt;
   query_opt.emplace(query.id(), query.qname(), query.qtype());
   if (!name_or || !IsCanonicalizedHostCompliant(name_or.value())) {
     response =
@@ -115,8 +115,6 @@ int RedirectResolver::HandleReadResult(int result) {
                     /*authority_records=*/{}, /*additional_records=*/{},
                     query_opt, dns_protocol::kRcodeNOTIMP);
   } else {
-    Resolution res;
-
     const auto& name = name_or.value();
 
     auto by_name_lookup = resolution_by_name_.emplace(name, resolutions_.end());
@@ -124,20 +122,19 @@ int RedirectResolver::HandleReadResult(int result) {
     bool has_name = !by_name_lookup.second;
     if (has_name) {
       auto res_it = by_name->second;
-      auto by_addr = res_it->by_addr;
       uint32_t addr = res_it->addr;
+      auto addr_it = resolution_by_addr_.find(addr);
+      DCHECK(addr_it != resolution_by_addr_.end());
 
       resolutions_.erase(res_it);
       resolutions_.emplace_back();
       res_it = std::prev(resolutions_.end());
 
       by_name->second = res_it;
-      by_addr->second = res_it;
+      addr_it->second = res_it;
       res_it->addr = addr;
       res_it->name = name;
       res_it->time = base::TimeTicks::Now();
-      res_it->by_name = by_name;
-      res_it->by_addr = by_addr;
     } else {
       uint32_t addr = (range_.bytes()[0] << 24) | (range_.bytes()[1] << 16) |
                       (range_.bytes()[2] << 8) | range_.bytes()[3];
@@ -157,7 +154,7 @@ int RedirectResolver::HandleReadResult(int result) {
         LOG(INFO) << "Overwrite " << res_it->name << " "
                   << PackedIPv4ToString(res_it->addr) << " with " << name << " "
                   << PackedIPv4ToString(addr);
-        resolution_by_name_.erase(res_it->by_name);
+        resolution_by_name_.erase(res_it->name);
         resolutions_.erase(res_it);
         resolutions_.emplace_back();
         res_it = std::prev(resolutions_.end());
@@ -167,8 +164,6 @@ int RedirectResolver::HandleReadResult(int result) {
         res_it->addr = addr;
         res_it->name = name;
         res_it->time = base::TimeTicks::Now();
-        res_it->by_name = by_name;
-        res_it->by_addr = by_addr;
       } else {
         LOG(INFO) << "Add " << name << " " << PackedIPv4ToString(addr);
         resolutions_.emplace_back();
@@ -179,8 +174,6 @@ int RedirectResolver::HandleReadResult(int result) {
         res_it->addr = addr;
         res_it->name = name;
         res_it->time = base::TimeTicks::Now();
-        res_it->by_name = by_name;
-        res_it->by_addr = by_addr;
 
         // Collects garbage.
         auto now = base::TimeTicks::Now();
@@ -190,8 +183,8 @@ int RedirectResolver::HandleReadResult(int result) {
           auto next = std::next(it);
           LOG(INFO) << "Drop " << it->name << " "
                     << PackedIPv4ToString(it->addr);
-          resolution_by_name_.erase(it->by_name);
-          resolution_by_addr_.erase(it->by_addr);
+          resolution_by_name_.erase(it->name);
+          resolution_by_addr_.erase(it->addr);
           resolutions_.erase(it);
           it = next;
         }

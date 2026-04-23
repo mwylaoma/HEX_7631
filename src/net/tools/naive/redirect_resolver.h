@@ -7,9 +7,9 @@
 
 #include <cstdint>
 #include <list>
-#include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 #include "base/memory/ref_counted.h"
 #include "base/memory/weak_ptr.h"
@@ -29,8 +29,6 @@ struct Resolution {
   uint32_t addr;
   std::string name;
   base::TimeTicks time;
-  std::map<std::string, std::list<Resolution>::iterator>::iterator by_name;
-  std::map<uint32_t, std::list<Resolution>::iterator>::iterator by_addr;
 };
 
 class RedirectResolver {
@@ -58,8 +56,8 @@ class RedirectResolver {
   scoped_refptr<IOBufferWithSize> buffer_;
   IPEndPoint recv_address_;
 
-  std::map<std::string, std::list<Resolution>::iterator> resolution_by_name_;
-  std::map<uint32_t, std::list<Resolution>::iterator> resolution_by_addr_;
+  std::unordered_map<std::string, std::list<Resolution>::iterator> resolution_by_name_;
+  std::unordered_map<uint32_t, std::list<Resolution>::iterator> resolution_by_addr_;
   std::list<Resolution> resolutions_;
 
   base::WeakPtrFactory<RedirectResolver> weak_ptr_factory_{this};
